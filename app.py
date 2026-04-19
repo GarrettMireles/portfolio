@@ -26,6 +26,30 @@ TOPICS = [
     "Supply Chain",
     "Safety",
 ]
+SOURCES = [
+    "Reuters",
+    "AP News",
+    "Bloomberg",
+    "STAT News",
+    "Endpoints News",
+    "FiercePharma",
+    "FDA.gov",
+    "Google News",
+    "Peptide Sciences Blog",
+    "Biospace",
+]
+PEPTIDE_TYPES = [
+    "Metabolic & GLP-1",
+    "Growth Hormone Secretagogues",
+    "Regenerative & Repair",
+    "Copper & Cosmetic",
+    "Sexual Health",
+    "Nootropic & Neuropeptide",
+    "Antimicrobial & Immune",
+    "Longevity & Mitochondrial",
+    "Oncology & Therapeutic",
+    "General Peptide Coverage",
+]
 
 PEPTIDE_KEYWORDS = {
     "BPC-157": 1.0,
@@ -56,6 +80,13 @@ PEPTIDE_KEYWORDS = {
     "Dihexa": 1.0,
     "GLP-1": 1.0,
     "GIP/GLP-1": 1.0,
+    "amylin": 1.0,
+    "insulin": 1.0,
+    "cyclic peptide": 1.0,
+    "antimicrobial peptide": 1.0,
+    "peptide vaccine": 1.0,
+    "peptide therapeutic": 1.0,
+    "peptide drug": 1.0,
     "peptide therapy": 0.7,
     "peptide clinic": 0.7,
     "compounding pharmacy": 0.7,
@@ -73,6 +104,90 @@ PEPTIDE_KEYWORDS = {
     "regenerative medicine": 0.4,
     "telehealth prescriber": 0.4,
     "research chemical": 0.4,
+    "peptide": 0.3,
+    "peptides": 0.3,
+}
+
+PEPTIDE_TYPE_TERMS = {
+    "Metabolic & GLP-1": [
+        "glp-1",
+        "gip/glp-1",
+        "semaglutide",
+        "tirzepatide",
+        "tesamorelin",
+        "amylin",
+        "incretin",
+        "metabolic",
+        "obesity",
+        "diabetes",
+        "insulin",
+    ],
+    "Growth Hormone Secretagogues": [
+        "cjc-1295",
+        "ipamorelin",
+        "sermorelin",
+        "ghrh",
+        "ghrp-6",
+        "ghrp-2",
+        "growth hormone secretagogue",
+    ],
+    "Regenerative & Repair": [
+        "bpc-157",
+        "tb-500",
+        "thymosin beta-4",
+        "aod-9604",
+        "regenerative",
+        "repair",
+        "tendon",
+        "wound",
+    ],
+    "Copper & Cosmetic": ["ghk-cu", "copper peptide", "cosmetic", "skin", "hair"],
+    "Sexual Health": ["pt-141", "bremelanotide", "melanotan", "sexual"],
+    "Nootropic & Neuropeptide": [
+        "selank",
+        "semax",
+        "dsip",
+        "cerebrolysin",
+        "dihexa",
+        "nootropic",
+        "neuropeptide",
+    ],
+    "Antimicrobial & Immune": ["ll-37", "kpv", "antimicrobial", "immune", "inflammatory"],
+    "Longevity & Mitochondrial": [
+        "epitalon",
+        "mots-c",
+        "humanin",
+        "ss-31",
+        "elamipretide",
+        "longevity",
+        "mitochondrial",
+        "anti-aging",
+    ],
+    "Oncology & Therapeutic": [
+        "peptide therapeutic",
+        "peptide drug",
+        "cyclic peptide",
+        "peptide vaccine",
+        "oncology",
+        "cancer",
+        "clinical trial",
+    ],
+    "General Peptide Coverage": ["peptide", "peptides", "peptide therapy", "research peptide"],
+}
+
+GENERIC_MENTION_TERMS = {
+    "amylin",
+    "insulin",
+    "cyclic peptide",
+    "antimicrobial peptide",
+    "peptide vaccine",
+    "peptide therapeutic",
+    "peptide drug",
+    "peptide therapy",
+    "peptide clinic",
+    "research peptide",
+    "peptide",
+    "peptides",
 }
 
 TOPIC_TERMS = {
@@ -87,7 +202,10 @@ TOPIC_TERMS = {
 
 
 def parse_iso(value):
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
 
 
 def serialize_article(article):
@@ -103,6 +221,12 @@ def load_sample_articles():
 
     for article in articles:
         article["published_dt"] = parse_iso(article["published_at"])
+        article.setdefault("peptide_mentions", extract_mentions(article["title"], article["excerpt"]))
+        article.setdefault("peptide_types", classify_peptide_types(article["title"], article["excerpt"]))
+        article.setdefault("api_category", "sample")
+        article.setdefault("language", "en")
+        article.setdefault("source_country", "us")
+        article.setdefault("authors", [])
     return articles
 
 
@@ -136,8 +260,29 @@ def extract_mentions(title, excerpt):
     return [
         keyword
         for keyword, weight in PEPTIDE_KEYWORDS.items()
-        if weight >= 1.0 and keyword.lower() in haystack
+        if weight >= 1.0
+        and keyword.lower() not in GENERIC_MENTION_TERMS
+        and keyword.lower() in haystack
     ][:6]
+
+
+def classify_peptide_types(title, excerpt):
+    haystack = f"{title} {excerpt}".lower()
+    scores = {
+        peptide_type: sum(1 for term in terms if term in haystack)
+        for peptide_type, terms in PEPTIDE_TYPE_TERMS.items()
+    }
+    matched = [
+        peptide_type
+        for peptide_type, score in scores.items()
+        if score > 0 and peptide_type != "General Peptide Coverage"
+    ]
+    if matched:
+        matched.sort(key=lambda peptide_type: scores[peptide_type], reverse=True)
+        return matched[:3]
+    if any(term in haystack for term in PEPTIDE_TYPE_TERMS["General Peptide Coverage"]):
+        return ["General Peptide Coverage"]
+    return []
 
 
 def classify_topics(title, excerpt):
@@ -184,7 +329,7 @@ def fetch_worldnews_articles(limit):
     params = urlencode(
         {
             "api-key": api_key,
-            "text": 'peptide OR "GLP-1" OR semaglutide OR tirzepatide OR "BPC-157" OR "GHK-Cu"',
+            "text": "peptide",
             "language": "en",
             "number": min(max(limit, 10), 50),
             "sort": "publish-time",
@@ -231,7 +376,12 @@ def fetch_worldnews_articles(limit):
             "primary_topic": primary_topic,
             "topic_tags": topic_tags,
             "peptide_mentions": extract_mentions(title, excerpt),
+            "peptide_types": classify_peptide_types(title, excerpt),
             "image_url": item.get("image"),
+            "api_category": item.get("category"),
+            "language": item.get("language"),
+            "source_country": item.get("source_country"),
+            "authors": item.get("authors") or [],
             "published_dt": published_dt,
         }
         mapped.append(article)
@@ -242,7 +392,7 @@ def fetch_worldnews_articles(limit):
 def filtered_articles(articles, anchor_time):
     topics = parse_csv_param("topic")
     sources = parse_csv_param("source")
-    sentiments = parse_csv_param("sentiment")
+    peptide_types = parse_csv_param("peptide_type")
     search = request.args.get("search", "").strip().lower()
     hours = clamp_int(request.args.get("hours"), 24, 12, 720)
     if hours not in ALLOWED_HOURS:
@@ -262,8 +412,12 @@ def filtered_articles(articles, anchor_time):
     if sources:
         results = [article for article in results if article.get("source_name", "").lower() in sources]
 
-    if sentiments:
-        results = [article for article in results if article.get("sentiment_label", "").lower() in sentiments]
+    if peptide_types:
+        results = [
+            article
+            for article in results
+            if any(peptide_type.lower() in peptide_types for peptide_type in article.get("peptide_types", []))
+        ]
 
     if search:
         results = [
@@ -279,6 +433,10 @@ def filtered_articles(articles, anchor_time):
         results.sort(key=lambda article: article.get("relevance_score", 0), reverse=True)
     elif sort == "sentiment":
         results.sort(key=lambda article: article.get("sentiment_score", 0), reverse=True)
+    elif sort == "source":
+        results.sort(key=lambda article: article.get("source_name", ""))
+    elif sort == "type":
+        results.sort(key=lambda article: ", ".join(article.get("peptide_types", [])))
     else:
         results.sort(key=lambda article: article["published_dt"], reverse=True)
 
@@ -298,7 +456,7 @@ def get_article_source():
 
 @app.route("/")
 def home():
-    return render_template("index.html", topics=TOPICS)
+    return render_template("index.html", topics=TOPICS, peptide_types=PEPTIDE_TYPES, sources=SOURCES)
 
 
 @app.route("/api/articles")
@@ -326,20 +484,30 @@ def summary():
     source_articles, anchor_time, data_source = get_article_source()
     results, hours = filtered_articles(source_articles, anchor_time)
     total = len(results)
-    avg_sentiment = round(
-        sum(article.get("sentiment_score", 0) for article in results) / total, 2
-    ) if total else 0
     topic_counts = Counter(article.get("primary_topic", "Research") for article in results)
     top_topic, top_topic_count = topic_counts.most_common(1)[0] if topic_counts else ("None", 0)
+    source_counts = Counter(article.get("source_name", "Unknown") for article in results)
+    top_source, top_source_count = source_counts.most_common(1)[0] if source_counts else ("None", 0)
+    peptide_type_counts = Counter(
+        peptide_type
+        for article in results
+        for peptide_type in article.get("peptide_types", [])
+    )
+    top_peptide_type, top_peptide_type_count = (
+        peptide_type_counts.most_common(1)[0] if peptide_type_counts else ("None", 0)
+    )
     pub_rate = round(total / max(hours, 1), 1)
 
     return jsonify(
         {
             "total_articles": total,
-            "avg_sentiment": avg_sentiment,
-            "sentiment_detail": sentiment_label(avg_sentiment).title(),
             "top_topic": top_topic,
             "top_topic_count": top_topic_count,
+            "top_source": top_source,
+            "top_source_count": top_source_count,
+            "top_peptide_type": top_peptide_type,
+            "top_peptide_type_count": top_peptide_type_count,
+            "peptide_type_count": len(peptide_type_counts),
             "publication_rate": pub_rate,
             "hours": hours,
             "data_source": data_source,
@@ -358,20 +526,59 @@ def topics():
     breakdown = []
     for topic in TOPICS:
         items = grouped.get(topic, [])
-        avg_sentiment = (
-            round(sum(article.get("sentiment_score", 0) for article in items) / len(items), 2)
-            if items
-            else 0
-        )
+        source_counts = Counter(article.get("source_name", "Unknown") for article in items)
+        top_source, top_source_count = source_counts.most_common(1)[0] if source_counts else ("None", 0)
         breakdown.append(
             {
                 "topic": topic,
                 "article_count": len(items),
-                "avg_sentiment": avg_sentiment,
+                "top_source": top_source,
+                "top_source_count": top_source_count,
             }
         )
 
     return jsonify({"topics": breakdown, "hours": hours, "data_source": data_source})
+
+
+@app.route("/api/peptide-types")
+def peptide_types():
+    source_articles, anchor_time, data_source = get_article_source()
+    results, hours = filtered_articles(source_articles, anchor_time)
+    grouped = defaultdict(list)
+    for article in results:
+        for peptide_type in article.get("peptide_types", []) or ["Unclassified"]:
+            grouped[peptide_type].append(article)
+
+    rows = []
+    for peptide_type in PEPTIDE_TYPES + ["Unclassified"]:
+        items = grouped.get(peptide_type, [])
+        if not items:
+            rows.append(
+                {
+                    "peptide_type": peptide_type,
+                    "article_count": 0,
+                    "top_topic": "None",
+                    "top_source": "None",
+                    "avg_relevance": 0,
+                }
+            )
+            continue
+        topic_counts = Counter(article.get("primary_topic", "Research") for article in items)
+        source_counts = Counter(article.get("source_name", "Unknown") for article in items)
+        rows.append(
+            {
+                "peptide_type": peptide_type,
+                "article_count": len(items),
+                "top_topic": topic_counts.most_common(1)[0][0],
+                "top_source": source_counts.most_common(1)[0][0],
+                "avg_relevance": round(
+                    sum(article.get("relevance_score", 0) for article in items) / len(items),
+                    2,
+                ),
+            }
+        )
+
+    return jsonify({"peptide_types": rows, "hours": hours, "data_source": data_source})
 
 
 @app.route("/api/trends")

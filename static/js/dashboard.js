@@ -6,11 +6,14 @@ const state = {
 };
 
 const grid = document.querySelector("#articles-grid");
+const articleTableBody = document.querySelector("#article-table-body");
+const peptideTypeTableBody = document.querySelector("#peptide-type-table-body");
 const emptyState = document.querySelector("#empty-state");
 const loadMoreButton = document.querySelector("#load-more");
 const resultCount = document.querySelector("#result-count");
 const searchInput = document.querySelector("#search-input");
 const sortSelect = document.querySelector("#sort-select");
+const liveToggle = document.querySelector("#live-toggle");
 
 function selectedValues(name) {
     return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`))
@@ -32,13 +35,14 @@ function buildParams(offset = 0) {
 
     const topics = selectedValues("topic");
     const sources = selectedValues("source");
-    const sentiments = selectedValues("sentiment");
+    const peptideTypes = selectedValues("peptide_type");
     const search = searchInput.value.trim();
 
     params.set("topic", topics.length ? topics.join(",") : "__none__");
     params.set("source", sources.length ? sources.join(",") : "__none__");
-    params.set("sentiment", sentiments.length ? sentiments.join(",") : "__none__");
+    params.set("peptide_type", peptideTypes.length ? peptideTypes.join(",") : "__none__");
     if (search) params.set("search", search);
+    if (liveToggle.checked) params.set("live", "1");
 
     return params;
 }
@@ -63,8 +67,28 @@ function formatPercent(value) {
     return `${Math.round(Number(value || 0) * 100)}%`;
 }
 
-function titleCase(value) {
-    return String(value || "").replace(/\b\w/g, (letter) => letter.toUpperCase());
+function formatDate(value) {
+    return new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+    }).format(new Date(value));
+}
+
+function escapeHtml(value) {
+    const div = document.createElement("div");
+    div.textContent = String(value ?? "");
+    return div.innerHTML;
+}
+
+function safeUrl(value) {
+    try {
+        const url = new URL(value);
+        return ["http:", "https:"].includes(url.protocol) ? url.href : "#";
+    } catch {
+        return "#";
+    }
 }
 
 function setLastUpdated() {
@@ -123,10 +147,10 @@ function renderArticle(article) {
 
     const badges = document.createElement("div");
     badges.className = "badge-row";
-    badges.append(
-        createBadge(titleCase(article.sentiment_label), article.sentiment_label),
-        createBadge(article.primary_topic, "topic")
-    );
+    badges.append(createBadge(article.primary_topic, "topic"));
+    (article.peptide_types || []).forEach((type) => {
+        badges.append(createBadge(type, "type"));
+    });
 
     const mentions = document.createElement("div");
     mentions.className = "mention-row";
@@ -141,7 +165,7 @@ function renderArticle(article) {
     const relevance = document.createElement("span");
     relevance.textContent = `Relevance: ${formatPercent(article.relevance_score)}`;
     const sentiment = document.createElement("span");
-    sentiment.textContent = `Score: ${Number(article.sentiment_score || 0).toFixed(2)}`;
+    sentiment.textContent = article.peptide_mentions?.length ? `${article.peptide_mentions.length} mentions` : "No named peptide";
     footer.append(relevance, sentiment);
 
     body.append(top, footer);
@@ -149,15 +173,45 @@ function renderArticle(article) {
     return card;
 }
 
+function renderTableRow(article) {
+    const row = document.createElement("tr");
+    const sourceName = escapeHtml(article.source_name || "Unknown");
+    const sourceUrl = safeUrl(article.source_url);
+    const source = sourceUrl !== "#"
+        ? `<a href="${sourceUrl}" target="_blank" rel="noreferrer">${sourceName}</a>`
+        : sourceName;
+    const types = escapeHtml((article.peptide_types || []).join(", ") || "Unclassified");
+    const mentions = escapeHtml((article.peptide_mentions || []).join(", ") || "None found");
+
+    row.innerHTML = `
+        <td>${formatDate(article.published_at)}</td>
+        <td>${source}</td>
+        <td>${types}</td>
+        <td>${mentions}</td>
+        <td>${escapeHtml(article.primary_topic || "Unclassified")}</td>
+        <td>${formatPercent(article.relevance_score)}</td>
+        <td>${escapeHtml(article.title)}</td>
+    `;
+    return row;
+}
+
 function renderArticles(payload, append = false) {
     state.total = payload.total;
-    if (!append) grid.replaceChildren();
+    if (!append) {
+        grid.replaceChildren();
+        articleTableBody.replaceChildren();
+    }
 
-    const fragment = document.createDocumentFragment();
-    payload.articles.forEach((article) => fragment.append(renderArticle(article)));
-    grid.append(fragment);
+    const cardFragment = document.createDocumentFragment();
+    const tableFragment = document.createDocumentFragment();
+    payload.articles.forEach((article) => {
+        cardFragment.append(renderArticle(article));
+        tableFragment.append(renderTableRow(article));
+    });
+    grid.append(cardFragment);
+    articleTableBody.append(tableFragment);
 
-    const visible = grid.children.length;
+    const visible = articleTableBody.children.length;
     resultCount.textContent = `${formatNumber(visible)} of ${formatNumber(payload.total)} articles`;
     emptyState.hidden = payload.total !== 0;
     loadMoreButton.hidden = visible >= payload.total;
@@ -168,11 +222,11 @@ function renderArticles(payload, append = false) {
 function renderSummary(summary) {
     document.querySelector("#summary-total").textContent = formatNumber(summary.total_articles);
     document.querySelector("#summary-window").textContent = `Last ${summary.hours === 168 ? "7 days" : summary.hours === 720 ? "30 days" : `${summary.hours} hours`}`;
-    document.querySelector("#summary-sentiment").textContent = Number(summary.avg_sentiment).toFixed(2);
-    document.querySelector("#summary-sentiment-detail").textContent = summary.sentiment_detail;
-    document.querySelector("#summary-topic").textContent = summary.top_topic;
-    document.querySelector("#summary-topic-detail").textContent = `${formatNumber(summary.top_topic_count)} mentions`;
-    document.querySelector("#summary-rate").textContent = Number(summary.publication_rate).toFixed(1);
+    document.querySelector("#summary-type-count").textContent = formatNumber(summary.peptide_type_count);
+    document.querySelector("#summary-type").textContent = summary.top_peptide_type;
+    document.querySelector("#summary-type-detail").textContent = `${formatNumber(summary.top_peptide_type_count)} articles`;
+    document.querySelector("#summary-source").textContent = summary.top_source;
+    document.querySelector("#summary-source-detail").textContent = `${formatNumber(summary.top_source_count)} articles`;
 }
 
 function renderTopics(payload) {
@@ -199,13 +253,36 @@ function renderTopics(payload) {
         fill.style.width = `${Math.round((topic.article_count / max) * 100)}%`;
         bar.append(fill);
 
-        const sentiment = document.createElement("span");
-        sentiment.className = "topic-sentiment";
-        sentiment.textContent = `Avg sentiment ${Number(topic.avg_sentiment).toFixed(2)}`;
+        const source = document.createElement("span");
+        source.className = "topic-sentiment";
+        source.textContent = topic.article_count ? `Top source ${topic.top_source}` : "No articles";
 
-        item.append(row, bar, sentiment);
+        item.append(row, bar, source);
         list.append(item);
     });
+}
+
+function renderPeptideTypes(payload) {
+    peptideTypeTableBody.replaceChildren();
+    const fragment = document.createDocumentFragment();
+    payload.peptide_types
+        .filter((row) => row.article_count > 0)
+        .forEach((item) => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${escapeHtml(item.peptide_type)}</td>
+                <td>${formatNumber(item.article_count)}</td>
+                <td>${escapeHtml(item.top_topic)}</td>
+            `;
+            fragment.append(row);
+        });
+
+    if (!fragment.children.length) {
+        const row = document.createElement("tr");
+        row.innerHTML = '<td colspan="3">No peptide types in this slice</td>';
+        fragment.append(row);
+    }
+    peptideTypeTableBody.append(fragment);
 }
 
 async function fetchJson(path, params) {
@@ -229,15 +306,17 @@ async function refreshDashboard({ append = false } = {}) {
         metricParams.delete("limit");
         metricParams.delete("offset");
 
-        const [articles, summary, topics] = await Promise.all([
+        const [articles, summary, topics, peptideTypes] = await Promise.all([
             fetchJson("/api/articles", articleParams),
             fetchJson("/api/summary", metricParams),
-            fetchJson("/api/topics", metricParams)
+            fetchJson("/api/topics", metricParams),
+            fetchJson("/api/peptide-types", metricParams)
         ]);
 
         renderArticles(articles, append);
         renderSummary(summary);
         renderTopics(topics);
+        renderPeptideTypes(peptideTypes);
         state.offset = grid.children.length;
         setLastUpdated();
     } catch (error) {
@@ -268,6 +347,7 @@ document.querySelectorAll(".filter-checkbox").forEach((input) => {
 
 searchInput.addEventListener("input", debounce(resetAndRefresh));
 sortSelect.addEventListener("change", resetAndRefresh);
+liveToggle.addEventListener("change", resetAndRefresh);
 loadMoreButton.addEventListener("click", () => refreshDashboard({ append: true }));
 
 setLastUpdated();

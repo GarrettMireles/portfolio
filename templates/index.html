@@ -26,10 +26,20 @@
 
             <section class="filter-group" aria-labelledby="source-filter">
                 <h2 class="filter-label" id="source-filter">Sources</h2>
-                {% for source in ["Reuters", "AP News", "Bloomberg", "STAT News", "Endpoints News", "FiercePharma", "FDA.gov", "Google News", "Peptide Sciences Blog", "Biospace"] %}
+                {% for source in sources %}
                 <label class="filter-item">
                     <input type="checkbox" class="filter-checkbox" name="source" value="{{ source }}" checked>
                     <span class="filter-text">{{ source }}</span>
+                </label>
+                {% endfor %}
+            </section>
+
+            <section class="filter-group" aria-labelledby="type-filter">
+                <h2 class="filter-label" id="type-filter">Peptide Types</h2>
+                {% for peptide_type in peptide_types %}
+                <label class="filter-item">
+                    <input type="checkbox" class="filter-checkbox" name="peptide_type" value="{{ peptide_type }}" checked>
+                    <span class="filter-text">{{ peptide_type }}</span>
                 </label>
                 {% endfor %}
             </section>
@@ -62,15 +72,6 @@
                 </label>
             </section>
 
-            <section class="filter-group" aria-labelledby="sentiment-filter">
-                <h2 class="filter-label" id="sentiment-filter">Sentiment</h2>
-                {% for sentiment in ["Positive", "Neutral", "Negative"] %}
-                <label class="filter-item">
-                    <input type="checkbox" class="filter-checkbox" name="sentiment" value="{{ sentiment | lower }}" checked>
-                    <span class="filter-text">{{ sentiment }}</span>
-                </label>
-                {% endfor %}
-            </section>
         </aside>
 
         <main class="main">
@@ -78,7 +79,7 @@
                 <div>
                     <p class="eyebrow">Peptide intelligence desk</p>
                     <h1 class="header-title">Peptide News Analytics</h1>
-                    <p class="header-subtitle">Regulation, market, research, and safety signals across peptide coverage.</p>
+                    <p class="header-subtitle">Review peptide coverage by source, topic, and peptide class before the live pipeline gets opinionated.</p>
                 </div>
                 <div class="status-panel" aria-live="polite">
                     <span class="status-label">Last updated</span>
@@ -95,19 +96,19 @@
                         <span class="summary-detail" id="summary-window">Current window</span>
                     </article>
                     <article class="summary-card">
-                        <span class="summary-label">Average Sentiment</span>
-                        <strong class="summary-value" id="summary-sentiment">--</strong>
-                        <span class="summary-detail" id="summary-sentiment-detail">Waiting for data</span>
+                        <span class="summary-label">Peptide Types</span>
+                        <strong class="summary-value" id="summary-type-count">--</strong>
+                        <span class="summary-detail">Types in current slice</span>
                     </article>
                     <article class="summary-card">
-                        <span class="summary-label">Hot Topic</span>
-                        <strong class="summary-value summary-topic" id="summary-topic">--</strong>
-                        <span class="summary-detail" id="summary-topic-detail">0 mentions</span>
+                        <span class="summary-label">Top Peptide Type</span>
+                        <strong class="summary-value summary-topic" id="summary-type">--</strong>
+                        <span class="summary-detail" id="summary-type-detail">0 articles</span>
                     </article>
                     <article class="summary-card">
-                        <span class="summary-label">Publication Rate</span>
-                        <strong class="summary-value" id="summary-rate">--</strong>
-                        <span class="summary-detail">Articles per hour</span>
+                        <span class="summary-label">Top Source</span>
+                        <strong class="summary-value summary-topic" id="summary-source">--</strong>
+                        <span class="summary-detail" id="summary-source-detail">0 articles</span>
                     </article>
                 </div>
             </section>
@@ -123,24 +124,66 @@
                         <select id="sort-select" class="sort-select">
                             <option value="date">Newest</option>
                             <option value="relevance">Relevance</option>
-                            <option value="sentiment">Sentiment</option>
+                            <option value="source">Source</option>
+                            <option value="type">Peptide Type</option>
                         </select>
                     </div>
+                    <label class="live-toggle">
+                        <span class="control-label">Data Mode</span>
+                        <span class="live-toggle-row">
+                            <input type="checkbox" id="live-toggle">
+                            <span>Try live World News API</span>
+                        </span>
+                    </label>
                 </div>
 
                 <div class="content-layout">
                     <section class="articles-section" aria-labelledby="articles-title">
                         <div class="section-header">
-                            <h2 class="content-title" id="articles-title">Recent Articles</h2>
+                            <h2 class="content-title" id="articles-title">Article Data Table</h2>
                             <span class="result-count" id="result-count">Loading articles</span>
                         </div>
-                        <div class="articles-grid" id="articles-grid"></div>
+                        <div class="table-wrap">
+                            <table class="data-table" aria-label="Article data review table">
+                                <thead>
+                                    <tr>
+                                        <th>Published</th>
+                                        <th>Source</th>
+                                        <th>Peptide Type</th>
+                                        <th>Mentions</th>
+                                        <th>Topic</th>
+                                        <th>Relevance</th>
+                                        <th>Title</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="article-table-body"></tbody>
+                            </table>
+                        </div>
                         <div class="empty-state" id="empty-state" hidden>No articles match your filters.</div>
+
+                        <div class="section-header card-header">
+                            <h2 class="content-title">Article Cards</h2>
+                            <span class="result-count">Visual scan</span>
+                        </div>
+                        <div class="articles-grid" id="articles-grid"></div>
                         <button class="load-more" id="load-more" type="button" hidden>Load more</button>
                     </section>
 
                     <aside class="topic-panel" aria-labelledby="topic-panel-title">
-                        <h2 class="content-title" id="topic-panel-title">Topic Pulse</h2>
+                        <h2 class="content-title" id="topic-panel-title">Peptide Type Summary</h2>
+                        <div class="table-wrap compact">
+                            <table class="data-table compact-table" aria-label="Peptide type summary table">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Articles</th>
+                                        <th>Top Topic</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="peptide-type-table-body"></tbody>
+                            </table>
+                        </div>
+                        <h2 class="content-title panel-subtitle">Topic Coverage</h2>
                         <div class="topic-list" id="topic-list"></div>
                     </aside>
                 </div>
