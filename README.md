@@ -6,7 +6,7 @@ The app calls World News API live when `WORLDNEWSAPI_KEY` is available. If the A
 
 ## Product Direction
 
-- Broad world news, not peptide-specific.
+- Broad world news coverage.
 - Consumer homepage first, dashboard later.
 - Images are preserved and shown on article cards.
 - World News API `sentiment` and `category` are intentionally not used in the UI.
