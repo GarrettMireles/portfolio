@@ -1,8 +1,16 @@
-# Peptide News Analytics
+# World News Homepage
 
-Railway-ready Flask MVP for a peptide-focused news analytics dashboard.
+Railway-ready Flask MVP for a consumer world-news homepage backed by World News API.
 
-The first deploy uses a seeded sample dataset so the dashboard is useful before Snowflake, scheduled ingestion, and NLP enrichment are wired in. The dashboard is now oriented around reviewable tables, source/topic filters, and peptide type slicers instead of sentiment.
+The app calls World News API live when `WORLDNEWSAPI_KEY` is available. If the API key is missing or the API is unavailable, it falls back to a small generic sample dataset so the page still renders locally and on Railway.
+
+## Product Direction
+
+- Broad world news, not peptide-specific.
+- Consumer homepage first, dashboard later.
+- Images are preserved and shown on article cards.
+- World News API `sentiment` and `category` are intentionally not used in the UI.
+- Primary filters are search, source country, publisher domain, time window, and sort.
 
 ## Local Development
 
@@ -15,24 +23,20 @@ python app.py
 
 Visit `http://localhost:5000`.
 
+For live data:
+
+```powershell
+$env:WORLDNEWSAPI_KEY="your-key-here"
+python app.py
+```
+
+Do not commit real API keys. Add `WORLDNEWSAPI_KEY` in Railway variables.
+
 ## API
 
 - `GET /api/articles`
 - `GET /api/summary`
-- `GET /api/topics`
-- `GET /api/peptide-types`
+- `GET /api/facets`
 - `GET /api/trends`
 
-`/api/articles` supports `topic`, `source`, `peptide_type`, `hours`, `limit`, `offset`, `search`, `sort`, and optional `live=1`.
-
-## World News API
-
-The app keeps seeded sample data as the default. For live experiments, set `WORLDNEWSAPI_KEY` in the environment and call:
-
-```text
-/api/articles?live=1
-```
-
-Do not commit real API keys. Add `WORLDNEWSAPI_KEY` in Railway variables when live ingestion becomes part of the product.
-
-The World News API search response can provide article text, summary, URL, image URL, publish date, authors, category, language, source country, and sentiment. This app currently uses those fields to build article review tables and local peptide-type classifications; sentiment is intentionally not part of the main UI.
+`/api/articles` supports `search`, `country`, `source`, `hours`, `images`, `sort`, `limit`, and `offset`.
