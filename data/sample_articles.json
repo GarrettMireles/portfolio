@@ -1,0 +1,82 @@
+[
+  {
+    "title": "Global leaders open talks on new regional security pact",
+    "summary": "Diplomats from several countries began a fresh round of negotiations focused on border security, energy supplies, and humanitarian access.",
+    "url": "https://apnews.com/",
+    "image": "https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?auto=format&fit=crop&w=1200&q=80",
+    "publish_date": "2026-04-20 09:15:00",
+    "author": "Sample Desk",
+    "language": "en",
+    "source_country": "us"
+  },
+  {
+    "title": "Markets steady as investors weigh central bank signals",
+    "summary": "Global equities were mixed as traders parsed new comments from policymakers and watched currency moves across Europe and Asia.",
+    "url": "https://www.reuters.com/",
+    "image": "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1200&q=80",
+    "publish_date": "2026-04-20 08:40:00",
+    "author": "Sample Markets Team",
+    "language": "en",
+    "source_country": "gb"
+  },
+  {
+    "title": "Flood recovery crews restore transit links after severe storms",
+    "summary": "Emergency crews reopened key roads and rail lines after heavy rain disrupted travel and displaced thousands of residents.",
+    "url": "https://www.bbc.com/news",
+    "image": "https://images.unsplash.com/photo-1527482797697-8795b05a13fe?auto=format&fit=crop&w=1200&q=80",
+    "publish_date": "2026-04-20 07:25:00",
+    "author": "Sample World Team",
+    "language": "en",
+    "source_country": "gb"
+  },
+  {
+    "title": "New satellite network expands broadband access in remote regions",
+    "summary": "A communications provider launched additional satellites intended to improve emergency connectivity and rural internet coverage.",
+    "url": "https://techcrunch.com/",
+    "image": "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?auto=format&fit=crop&w=1200&q=80",
+    "publish_date": "2026-04-20 06:50:00",
+    "author": "Sample Technology Desk",
+    "language": "en",
+    "source_country": "us"
+  },
+  {
+    "title": "Health officials monitor new respiratory illness clusters",
+    "summary": "Public health agencies said hospitals remain stable while investigators test samples and coordinate reporting across affected cities.",
+    "url": "https://www.statnews.com/",
+    "image": "https://images.unsplash.com/photo-1582719471384-894fbb16e074?auto=format&fit=crop&w=1200&q=80",
+    "publish_date": "2026-04-20 05:45:00",
+    "author": "Sample Health Team",
+    "language": "en",
+    "source_country": "us"
+  },
+  {
+    "title": "Climate ministers debate funding for coastal resilience",
+    "summary": "Delegates discussed insurance support, infrastructure grants, and relocation planning as sea-level risks reshape national budgets.",
+    "url": "https://www.aljazeera.com/",
+    "image": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
+    "publish_date": "2026-04-19 22:10:00",
+    "author": "Sample Climate Desk",
+    "language": "en",
+    "source_country": "qa"
+  },
+  {
+    "title": "Major museum returns artifacts after provenance review",
+    "summary": "Curators said the return followed years of archival research and talks with cultural officials.",
+    "url": "https://www.theguardian.com/international",
+    "image": "https://images.unsplash.com/photo-1564399579883-451a5d44ec08?auto=format&fit=crop&w=1200&q=80",
+    "publish_date": "2026-04-19 19:35:00",
+    "author": "Sample Culture Desk",
+    "language": "en",
+    "source_country": "gb"
+  },
+  {
+    "title": "Aid convoy reaches border crossing after week of delays",
+    "summary": "Relief groups said the shipment includes medical supplies, food, and water equipment for communities cut off by fighting.",
+    "url": "https://www.npr.org/sections/world/",
+    "image": "https://images.unsplash.com/photo-1469571486292-b53601012a84?auto=format&fit=crop&w=1200&q=80",
+    "publish_date": "2026-04-19 17:20:00",
+    "author": "Sample International Desk",
+    "language": "en",
+    "source_country": "us"
+  }
+]
